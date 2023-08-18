@@ -1,0 +1,17 @@
+contourpy==1.1.0
+cycler==0.11.0
+fonttools==4.40.0
+kiwisolver==1.4.4
+-e git+ssh://git@github.com/ipo-lab/lqp_py@5e755d01a5c56ff70c1c56cf9e9588e52a46890b#egg=lqp_py
+matplotlib==3.6.2
+numpy==1.24.1
+packaging==23.1
+pandas==1.5.2
+Pillow==10.0.0
+pyparsing==3.1.0
+python-dateutil==2.8.2
+pytz==2023.3
+-e git+ssh://git@github.com/ipo-lab/rpth@4d82cb3c7b8dbec50f9fc9c6e0f6bb0132923411#egg=rpth
+six==1.16.0
+torch==1.13.1
+typing_extensions==4.7.1
