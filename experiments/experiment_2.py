@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import torch
 from ts.loss import loss_maxdiv
-from experiments.utils import load_response, load_features, get_train_dates,  plot_z_maxdiv
+from experiments.utils import load_response, load_features, get_train_dates,  plot_z_maxdiv, get_trade_weights, compute_returns
 from ts.popt import MaxDivCCC, MaxDivCCCOLS, MaxDivDCC, MaxDivDCCOLS
 
 
@@ -84,36 +84,32 @@ for i in range(len(oos_dates)):
 
 # --- oos evaluation:
 oos_start = oos_dates[0][0]
-weights_ccc_ols_smooth = weights_ccc_ols.rolling(n_ahead).mean()
-p_ccc_ols = (weights_ccc_ols_smooth.values * y_df)[oos_start:]
-p_ccc_ols = p_ccc_ols.values.sum(axis=1)
-p_ccc_ols.std()/100*annual_factor
+# --- CCC OLS:
+w_ccc_ols = get_trade_weights(w=weights_ccc_ols, oos_start=oos_start, n_ahead=n_ahead)
+r_ccc_ols = compute_returns(w=w_ccc_ols, y_df=y_df, oos_start=oos_start)
 
-weights_dcc_ols_smooth = weights_dcc_ols.rolling(n_ahead).mean()
-p_dcc_ols = (weights_dcc_ols_smooth * y_df)[oos_start:]
-p_dcc_ols = p_dcc_ols.values.sum(axis=1)
-p_dcc_ols.std()/100*annual_factor
+# --- DCC OLS
+w_dcc_ols = get_trade_weights(w=weights_dcc_ols, oos_start=oos_start, n_ahead=n_ahead)
+r_dcc_ols = compute_returns(w=w_dcc_ols, y_df=y_df, oos_start=oos_start)
 
-weights_ccc_smooth = weights_ccc.rolling(n_ahead).mean()
-p_ccc = (weights_ccc_smooth.values * y_df)[oos_start:]
-p_ccc = p_ccc.values.sum(axis=1)
-p_ccc.std()/100*annual_factor
+# --- CCC IPO
+w_ccc_ipo = get_trade_weights(w=weights_ccc, oos_start=oos_start, n_ahead=n_ahead)
+r_ccc_ipo = compute_returns(w=w_ccc_ipo, y_df=y_df, oos_start=oos_start)
 
-weights_dcc_smooth = weights_dcc.rolling(n_ahead).mean()
-p_dcc = (weights_dcc_smooth * y_df)[oos_start:]
-p_dcc = p_dcc.values.sum(axis=1)
-p_dcc.std()/100*annual_factor
+# --- DCC IPO
+w_dcc_ipo = get_trade_weights(w=weights_dcc, oos_start=oos_start, n_ahead=n_ahead)
+r_dcc_ipo = compute_returns(w=w_dcc_ipo, y_df=y_df, oos_start=oos_start)
 
 # --- main plots:
-plot_z_maxdiv(p_ols=p_ccc_ols, p_ipo=p_ccc)
-plot_z_maxdiv(p_ols=p_dcc_ols, p_ipo=p_dcc)
+# --- CCC:
+plot_z_maxdiv(r_ols=r_ccc_ols.values, r_ipo=r_ccc_ipo.values)
+# --- DCC:
+plot_z_maxdiv(r_ols=r_dcc_ols.values, r_ipo=r_dcc_ipo.values)
 
-
-plt.plot(p_ccc_ols.cumsum())
-plt.plot(p_ccc.cumsum())
-plt.plot(p_dcc_ols.cumsum())
-plt.plot(p_dcc.cumsum())
-p_ccc_ols.mean()/p_ccc_ols.std()*annual_factor
-p_dcc_ols.mean()/p_dcc_ols.std()*annual_factor
-p_ccc.mean()/p_ccc.std()*annual_factor
-p_dcc.mean()/p_dcc.std()*annual_factor
+# --- Equity Plot:
+# --- CCC:
+plt.plot(r_ccc_ols.cumsum(), color='lightseagreen')
+plt.plot(r_ccc_ipo.cumsum(), color='darkorange')
+# --- DCC:
+plt.plot(r_dcc_ols.cumsum(), color='lightseagreen')
+plt.plot(r_dcc_ipo.cumsum(), color='darkorange')

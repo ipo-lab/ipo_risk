@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import torch
 from ts.loss import loss_minvar
-from experiments.utils import load_response, load_features, get_train_dates, plot_z_minvar
+from experiments.utils import load_response, load_features, get_train_dates, plot_z_minvar, get_trade_weights, compute_returns
 from ts.popt import MinVarCCC, MinVarCCCOLS, MinVarDCC, MinVarDCCOLS
 
 
@@ -84,28 +84,44 @@ for i in range(len(oos_dates)):
 
 # --- oos evaluation:
 oos_start = oos_dates[0][0]
-weights_ccc_ols_smooth = weights_ccc_ols.rolling(n_ahead).mean()
-p_ccc_ols = (weights_ccc_ols_smooth.values * y_df)[oos_start:]
-p_ccc_ols = p_ccc_ols.values.sum(axis=1)
-p_ccc_ols.std()/100*annual_factor
+# --- CCC OLS:
+w_ccc_ols = get_trade_weights(w=weights_ccc_ols, oos_start=oos_start, n_ahead=n_ahead)
+r_ccc_ols = compute_returns(w=w_ccc_ols, y_df=y_df, oos_start=oos_start)
 
-weights_dcc_ols_smooth = weights_dcc_ols.rolling(n_ahead).mean()
-p_dcc_ols = (weights_dcc_ols_smooth * y_df)[oos_start:]
-p_dcc_ols = p_dcc_ols.values.sum(axis=1)
-p_dcc_ols.std()/100*annual_factor
+# --- DCC OLS
+w_dcc_ols = get_trade_weights(w=weights_dcc_ols, oos_start=oos_start, n_ahead=n_ahead)
+r_dcc_ols = compute_returns(w=w_dcc_ols, y_df=y_df, oos_start=oos_start)
 
-weights_ccc_smooth = weights_ccc.rolling(n_ahead).mean()
-p_ccc = (weights_ccc_smooth.values * y_df)[oos_start:]
-p_ccc = p_ccc.values.sum(axis=1)
-p_ccc.std()/100*annual_factor
+# --- CCC IPO
+w_ccc_ipo = get_trade_weights(w=weights_ccc, oos_start=oos_start, n_ahead=n_ahead)
+r_ccc_ipo = compute_returns(w=w_ccc_ipo, y_df=y_df, oos_start=oos_start)
 
-weights_dcc_smooth = weights_dcc.rolling(n_ahead).mean()
-p_dcc = (weights_dcc_smooth * y_df)[oos_start:]
-p_dcc = p_dcc.values.sum(axis=1)
-p_dcc.std()/100*annual_factor
+# --- DCC IPO
+w_dcc_ipo = get_trade_weights(w=weights_dcc, oos_start=oos_start, n_ahead=n_ahead)
+r_dcc_ipo = compute_returns(w=w_dcc_ipo, y_df=y_df, oos_start=oos_start)
 
 # --- main plots:
-plot_z_minvar(p_ols=p_ccc_ols/100, p_ipo=p_ccc/100)
-vol_diff = pd.DataFrame(p_ccc).rolling(52).std() - pd.DataFrame(p_ccc_ols).rolling(52).std()
-plot_z_minvar(p_ols=p_dcc_ols/100, p_ipo=p_dcc/100)
-vol_diff = pd.DataFrame(p_dcc).rolling(52).std() - pd.DataFrame(p_dcc_ols).rolling(52).std()
+# --- CCC:
+plot_z_minvar(r_ols=r_ccc_ols.values, r_ipo=r_ccc_ipo.values)
+# --- DCC:
+plot_z_minvar(r_ols=r_dcc_ols.values, r_ipo=r_dcc_ipo.values)
+
+# --- Equity Plot:
+# --- CCC:
+plt.plot(r_ccc_ols.cumsum(), color='lightseagreen')
+plt.plot(r_ccc_ipo.cumsum(), color='darkorange')
+# --- DCC:
+plt.plot(r_dcc_ols.cumsum(), color='lightseagreen')
+plt.plot(r_dcc_ipo.cumsum(), color='darkorange')
+
+# --- Vol diff plots:
+# --- CCC:
+vol_ccc_ols = r_ccc_ols.rolling(3*52).std()*annual_factor
+vol_ccc_ipo = r_ccc_ipo.rolling(3*52).std()*annual_factor
+vol_diff = (vol_ccc_ols-vol_ccc_ipo)/100
+plt.plot(vol_diff)
+# --- DCC:
+vol_dcc_ols = r_dcc_ols.rolling(3*52).std()*annual_factor
+vol_dcc_ipo = r_dcc_ipo.rolling(3*52).std()*annual_factor
+vol_diff = (vol_dcc_ols-vol_dcc_ipo)/100
+plt.plot(vol_diff)

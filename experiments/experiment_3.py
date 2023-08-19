@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import torch
 from ts.loss import loss_erc
-from experiments.utils import load_response, load_features, get_train_dates, plot_z_rp
+from experiments.utils import load_response, load_features, get_train_dates, plot_z_rp, get_trade_weights, compute_returns
 from ts.popt import RPCCC, RPCCCOLS, RPDCC, RPDCCOLS
 
 
@@ -84,44 +84,36 @@ for i in range(len(oos_dates)):
 
 # --- oos evaluation:
 oos_start = oos_dates[0][0]
-weights_ccc_ols_smooth = weights_ccc_ols*1.0#.div(weights_ccc_ols.sum(axis=1) + 1e-12, axis=0)
-weights_ccc_ols_smooth = weights_ccc_ols_smooth.rolling(n_ahead).mean()
-p_ccc_ols = (weights_ccc_ols_smooth.values * y_df)[oos_start:]
-p_ccc_ols = p_ccc_ols.values.sum(axis=1)
-p_ccc_ols.std()/100*annual_factor
+# --- CCC OLS:
+w_ccc_ols = get_trade_weights(w=weights_ccc_ols, oos_start=oos_start, n_ahead=n_ahead)
+r_ccc_ols = compute_returns(w=w_ccc_ols, y_df=y_df, oos_start=oos_start)
 
-weights_dcc_ols_smooth = weights_dcc_ols*1.0#.div(weights_dcc_ols.sum(axis=1) + 1e-12, axis=0)
-weights_dcc_ols_smooth = weights_dcc_ols_smooth.rolling(n_ahead).mean()
-p_dcc_ols = (weights_dcc_ols_smooth * y_df)[oos_start:]
-p_dcc_ols = p_dcc_ols.values.sum(axis=1)
-p_dcc_ols.std()/100*annual_factor
+# --- DCC OLS
+w_dcc_ols = get_trade_weights(w=weights_dcc_ols, oos_start=oos_start, n_ahead=n_ahead)
+r_dcc_ols = compute_returns(w=w_dcc_ols, y_df=y_df, oos_start=oos_start)
 
-weights_ccc_smooth = weights_ccc*1.0#.div(weights_ccc.sum(axis=1) + 1e-12, axis=0)
-weights_ccc_smooth = weights_ccc_smooth.rolling(n_ahead).mean()
-p_ccc = (weights_ccc_smooth.values * y_df)[oos_start:]
-p_ccc = p_ccc.values.sum(axis=1)
-p_ccc.std()/100*annual_factor
+# --- CCC IPO
+w_ccc_ipo = get_trade_weights(w=weights_ccc, oos_start=oos_start, n_ahead=n_ahead)
+r_ccc_ipo = compute_returns(w=w_ccc_ipo, y_df=y_df, oos_start=oos_start)
 
-weights_dcc_smooth = weights_dcc*1.0#.div(weights_dcc.sum(axis=1) + 1e-12, axis=0)
-weights_dcc_smooth = weights_dcc_smooth.rolling(n_ahead).mean()
-p_dcc = (weights_dcc_smooth * y_df)[oos_start:]
-p_dcc = p_dcc.values.sum(axis=1)
-p_dcc.std()/100*annual_factor
+# --- DCC IPO
+w_dcc_ipo = get_trade_weights(w=weights_dcc, oos_start=oos_start, n_ahead=n_ahead)
+r_dcc_ipo = compute_returns(w=w_dcc_ipo, y_df=y_df, oos_start=oos_start)
 
 # --- main plots:
-w_ols = weights_ccc_ols.rolling(n_ahead).mean()[oos_start:].values
-w_ipo = weights_ccc.rolling(n_ahead).mean()[oos_start:].values
-plot_z_rp(p_ols=p_ccc_ols, p_ipo=p_ccc, w_ols=w_ols, w_ipo=w_ipo)
+# --- CCC:
+plot_z_rp(r_ols=r_ccc_ols.values, r_ipo=r_ccc_ipo.values, w_ols=w_ccc_ols.values, w_ipo=w_ccc_ipo.values)
+# --- DCC:
+plot_z_rp(r_ols=r_dcc_ols.values, r_ipo=r_dcc_ipo.values, w_ols=w_dcc_ols.values, w_ipo=w_dcc_ipo.values)
 
-w_ols = weights_dcc_ols.rolling(n_ahead).mean()[oos_start:].values
-w_ipo = weights_dcc.rolling(n_ahead).mean()[oos_start:].values
-plot_z_rp(p_ols=p_dcc_ols, p_ipo=p_dcc, w_ols=w_ols, w_ipo=w_ipo)
-
-plt.plot(p_ccc_ols.cumsum())
-plt.plot(p_ccc.cumsum())
-plt.plot(p_dcc_ols.cumsum())
-plt.plot(p_dcc.cumsum())
-p_ccc_ols.mean()/p_ccc_ols.std()
-p_dcc_ols.mean()/p_dcc_ols.std()
-p_ccc.mean()/p_ccc.std()
-p_dcc.mean()/p_dcc.std()
+# --- Equity Plot:
+# --- CCC:
+r_ccc_ols_norm = r_ccc_ols/w_ccc_ols.values.sum(axis=1, keepdims=True)
+r_ccc_ipo_norm = r_ccc_ipo/w_ccc_ipo.values.sum(axis=1, keepdims=True)
+plt.plot(r_ccc_ols_norm.cumsum(), color='lightseagreen')
+plt.plot(r_ccc_ipo_norm.cumsum(), color='darkorange')
+# --- DCC:
+r_dcc_ols_norm = r_dcc_ols/w_dcc_ols.values.sum(axis=1, keepdims=True)
+r_dcc_ipo_norm = r_dcc_ipo/w_dcc_ipo.values.sum(axis=1, keepdims=True)
+plt.plot(r_dcc_ols_norm.cumsum(), color='lightseagreen')
+plt.plot(r_dcc_ipo_norm.cumsum(), color='darkorange')

@@ -4,7 +4,7 @@ import pandas as pd
 
 
 def get_train_dates():
-    train_dates = ['1989', '1994', '1999', '2004','2009', '2014', '2019', '2023']
+    train_dates = ['1989', '1994', '1999', '2004', '2009', '2014', '2019', '2023']
     oos_dates = []
     for i in range(len(train_dates)-1):
         oos_dates.append([str(int(train_dates[i]) + 1), train_dates[i+1]])
@@ -38,13 +38,13 @@ def to_monthly(x):
     return x.resample('M').sum()
 
 
-def plot_z_minvar(p_ols, p_ipo, n_samples=1000, sample_size=3*52, annual_factor=52):
-    n = p_ols.shape[0]
+def plot_z_minvar(r_ols, r_ipo, n_samples=1000, sample_size=3*52, annual_factor=52):
+    n = r_ols.shape[0]
     mat = np.zeros((n_samples, 2))
     for i in range(n_samples):
         idx = np.random.randint(n, size=sample_size)
-        mat[i, 0] = p_ols[idx].var() * annual_factor
-        mat[i, 1] = p_ipo[idx].var() * annual_factor
+        mat[i, 0] = r_ols[idx].var() * annual_factor
+        mat[i, 1] = r_ipo[idx].var() * annual_factor
 
     idx = np.argsort(mat[:, 1])
     mat = mat[idx, :]
@@ -68,13 +68,13 @@ def plot_z_minvar(p_ols, p_ipo, n_samples=1000, sample_size=3*52, annual_factor=
     return None
 
 
-def plot_z_maxdiv(p_ols, p_ipo, n_samples=1000, sample_size=3*52, annual_factor=52**0.5):
-    n = p_ols.shape[0]
+def plot_z_maxdiv(r_ols, r_ipo, n_samples=1000, sample_size=3*52, annual_factor=52**0.5):
+    n = r_ols.shape[0]
     mat = np.zeros((n_samples, 2))
     for i in range(n_samples):
         idx = np.random.randint(n, size=sample_size)
-        mat[i, 0] = compute_maxdiv_loss(p_ols[idx]) * annual_factor
-        mat[i, 1] = compute_maxdiv_loss(p_ipo[idx]) * annual_factor
+        mat[i, 0] = compute_maxdiv_loss(r_ols[idx]) * annual_factor
+        mat[i, 1] = compute_maxdiv_loss(r_ipo[idx]) * annual_factor
 
     idx = np.argsort(mat[:, 1])
     mat = mat[idx, :]
@@ -102,13 +102,13 @@ def compute_maxdiv_loss(x):
     return -np.abs(x).mean() / x.std()
 
 
-def plot_z_rp(p_ols, p_ipo, w_ols, w_ipo, n_samples=1000, sample_size=3*52):
-    n = p_ols.shape[0]
+def plot_z_rp(r_ols, r_ipo, w_ols, w_ipo, n_samples=1000, sample_size=3*52):
+    n = r_ols.shape[0]
     mat = np.zeros((n_samples, 2))
     for i in range(n_samples):
         idx = np.random.randint(n, size=sample_size)
-        mat[i, 0] = compute_erc_loss(p_ols[idx], w_ols[idx])
-        mat[i, 1] = compute_erc_loss(p_ipo[idx], w_ipo[idx])
+        mat[i, 0] = compute_erc_loss(r_ols[idx], w_ols[idx])
+        mat[i, 1] = compute_erc_loss(r_ipo[idx], w_ipo[idx])
 
     idx = np.argsort(mat[:, 1])
     mat = mat[idx, :]
@@ -137,3 +137,21 @@ def compute_erc_loss(x, w):
     log_loss = np.log(w).sum(axis=1).mean()
     loss = 0.50 * var - log_loss
     return loss
+
+
+def get_trade_weights(w, n_ahead=4, oos_start='1990'):
+    w_smooth = w.rolling(n_ahead).mean()
+    w_smooth = w_smooth[oos_start:]
+    return w_smooth
+
+
+def compute_returns(w, y_df, oos_start):
+    w = w[oos_start:]
+    y_df = y_df[oos_start:]
+    out = pd.DataFrame(np.zeros((w.shape[0], 1)), index=w.index)
+    r = (w.values * y_df)
+    out[:] = r.values.sum(axis=1, keepdims=True)
+    return out
+
+
+
