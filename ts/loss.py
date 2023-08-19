@@ -24,7 +24,22 @@ def loss_minvar(z, y):
     return loss
 
 
-def loss_erc(z, cov_mat):
+def loss_erc(z, y):
+    var = loss_minvar(z, y)
+    log_loss = torch.log(z).sum(axis=1).mean()
+    loss = 0.50 * var - log_loss
+    return loss
+
+
+def loss_maxdiv(z, y):
+    var = loss_minvar(z, y)
+    vol = torch_portfolio_return(z=z, y=torch.abs(y))
+    vol = vol.mean()
+    loss = -vol / torch.sqrt(var)
+    return loss
+
+
+def loss_erc_cov(z, cov_mat):
     denom = torch_portfolio_variance(z=z, cov_mat=cov_mat)
     z = z.unsqueeze(2)
     num = z * torch.matmul(cov_mat, z)
@@ -34,7 +49,7 @@ def loss_erc(z, cov_mat):
     return loss.mean()
 
 
-def loss_maxdiv(z, cov_mat):
+def loss_maxdiv_cov(z, cov_mat):
     vol = torch.sqrt(torch.diagonal(cov_mat, dim1=1, dim2=2))
     num = (z * vol).sum(1)
     denom = torch.sqrt(torch_portfolio_variance(z=z, cov_mat=cov_mat))
