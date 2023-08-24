@@ -27,12 +27,11 @@ cov_mat = model_oracle(y)
 
 # --- params
 lr = 0.05
-n_epochs = 30
+n_epochs = 50
 annual_factor = 52**0.5
 n_ahead = 1
-n_starts = 1
+n_starts = 5
 
-torch.manual_seed(0)
 # --- main loop
 for i in range(len(oos_dates)):
     print('training iteration: {}'.format(i))
@@ -47,7 +46,10 @@ for i in range(len(oos_dates)):
     y_oos = torch.as_tensor(y_df[:oos_dates_end].values)
     idx_is = slice(None, x_df.index.get_loc(train_dates_i).stop)
     idx_oos = slice(x_df.index.get_loc(oos_dates_start).start, x_df.index.get_loc(oos_dates_end).stop)
-    cov_mat_is = cov_mat[idx_is, :, :]
+    #cov_mat_is = cov_mat[idx_is, :, :]
+    model_oracle = GarchDCCNetNNL(x=y_is)
+    model_oracle.garch_model.buffer = 0
+    cov_mat_is = model_oracle(y_is)
 
     # --- Train OLS Models: on init:
     model_ccc_ols = MaxDivCCCOLS(x=x_is, y=y_is, n_ahead=n_ahead)
@@ -92,10 +94,10 @@ out_dir = 'images/'
 
 # --- CCC:
 plot_z_maxdiv_cov(w_ols=w_ccc_ols.values, w_ipo=w_ccc_ipo.values, cov_mat=cov_mat)
-plt.savefig(out_dir + 'rp_ccc_' + feature + '.png')
+plt.savefig(out_dir + 'maxdiv_ccc_' + feature + '.png')
 # --- DCC:
 plot_z_maxdiv_cov(w_ols=w_dcc_ols.values, w_ipo=w_dcc_ipo.values, cov_mat=cov_mat)
-plt.savefig(out_dir + 'rp_dcc_' + feature + '.png')
+plt.savefig(out_dir + 'maxdiv_dcc_' + feature + '.png')
 
 # --- Equity Plot:
 # --- CCC:

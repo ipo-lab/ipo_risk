@@ -5,11 +5,11 @@ import torch
 from ts.loss import loss_erc_cov, loss_maxdiv_cov, loss_minvar_cov
 
 
-def optimize_model(x, y, model_init, loss_fn, lr=0.05, n_epochs=25, n_starts=1, n_ahead=1, init='random'):
+def optimize_model(x, y, model_init, loss_fn, lr=0.05, n_epochs=25, n_starts=1, n_ahead=1, init='random', y0=None):
     best_loss = float('inf')
     best_model = None
     for i in range(n_starts):
-        model = model_init(x=x, y=y, n_ahead=n_ahead, init=init)
+        model = model_init(x=x, y=y, y0=y0, n_ahead=n_ahead, init=init)
         loss_hist = []
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         for epoch in range(n_epochs):
