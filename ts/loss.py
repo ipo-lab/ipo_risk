@@ -1,6 +1,6 @@
 import math
 import torch
-from ts.utils import torch_transpose_batch, torch_cov2cor
+from ts.utils import torch_transpose_batch, torch_cov2cor, torch_crossprod
 
 
 def torch_portfolio_return(z, y):
@@ -39,19 +39,24 @@ def loss_maxdiv(z, y):
     return loss
 
 
+def loss_minvar_cov(z, cov_mat):
+    loss = torch_portfolio_variance(z=z, cov_mat=cov_mat)
+    return loss.mean()
+
+
 def loss_erc_cov(z, cov_mat):
     denom = torch_portfolio_variance(z=z, cov_mat=cov_mat)
     z = z.unsqueeze(2)
     num = z * torch.matmul(cov_mat, z)
     loss = num.squeeze(2) / denom.unsqueeze(1)
     loss = loss ** 2
-    loss = loss.sum(1)
+    loss = loss.sum(dim=1)
     return loss.mean()
 
 
 def loss_maxdiv_cov(z, cov_mat):
     vol = torch.sqrt(torch.diagonal(cov_mat, dim1=1, dim2=2))
-    num = (z * vol).sum(1)
+    num = (z * vol).sum(dim=1)
     denom = torch.sqrt(torch_portfolio_variance(z=z, cov_mat=cov_mat))
     loss = num / denom
     return -loss.mean()

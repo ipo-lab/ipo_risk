@@ -8,11 +8,11 @@ from rpth.control import rpth_control
 
 
 class MinVarCCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, control=box_qp_control()):
+    def __init__(self, x, y, n_ahead=1, init='random', control=box_qp_control()):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchCCCNet(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model)
+        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model, init=init)
         # --- portfolio model:
         self.QP = SolveBoxQP(control=control)
 
@@ -56,11 +56,11 @@ class MinVarCCCOLS(nn.Module):
 
 
 class MinVarDCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, control=box_qp_control()):
+    def __init__(self, x, y, n_ahead=1, init='random', control=box_qp_control()):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchDCCNet(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model)
+        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model, init=init)
         # --- portfolio model:
         self.QP = SolveBoxQP(control=control)
 
@@ -104,11 +104,11 @@ class MinVarDCCOLS(nn.Module):
 
 
 class MaxDivCCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, control=box_qp_control()):
+    def __init__(self, x, y, n_ahead=1, init='random', control=box_qp_control()):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchCCCNet(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model)
+        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model, init=init)
         # --- portfolio model:
         self.QP = SolveBoxQP(control=control)
 
@@ -134,7 +134,7 @@ class MaxDivCCCOLS(nn.Module):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchCCCNetNNL(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model)
+        self.cov_model = CovFactorOLS(x=x, y=y, factor_cov_model=factor_cov_model)
         # --- portfolio model:
         self.QP = SolveBoxQP(control=control)
 
@@ -156,11 +156,11 @@ class MaxDivCCCOLS(nn.Module):
 
 
 class MaxDivDCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, control=box_qp_control()):
+    def __init__(self, x, y, n_ahead=1, init='random', control=box_qp_control()):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchDCCNet(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model)
+        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model, init=init)
         # --- portfolio model:
         self.QP = SolveBoxQP(control=control)
 
@@ -186,7 +186,7 @@ class MaxDivDCCOLS(nn.Module):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchDCCNetNNL(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model)
+        self.cov_model = CovFactorOLS(x=x, y=y, factor_cov_model=factor_cov_model)
         # --- portfolio model:
         self.QP = SolveBoxQP(control=control)
 
@@ -208,11 +208,11 @@ class MaxDivDCCOLS(nn.Module):
 
 
 class RPCCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, control=rpth_control(normalize=False)):
+    def __init__(self, x, y, n_ahead=1, init='random', control=rpth_control(normalize=True)):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchCCCNet(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model)
+        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model, init=init)
         # --- portfolio model:
         self.QP = RPTHNet(control=control)
 
@@ -228,11 +228,11 @@ class RPCCC(nn.Module):
 
 
 class RPCCCOLS(nn.Module):
-    def __init__(self, x, y, n_ahead=1, control=rpth_control(normalize=False)):
+    def __init__(self, x, y, n_ahead=1, control=rpth_control(normalize=True)):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchCCCNetNNL(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model)
+        self.cov_model = CovFactorOLS(x=x, y=y, factor_cov_model=factor_cov_model)
         # --- portfolio model:
         self.QP = RPTHNet(control=control)
 
@@ -248,11 +248,11 @@ class RPCCCOLS(nn.Module):
 
 
 class RPDCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, control=rpth_control(normalize=False)):
+    def __init__(self, x, y, n_ahead=1, init='random', control=rpth_control(normalize=True)):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchDCCNet(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model)
+        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model, init=init)
         # --- portfolio model:
         self.QP = RPTHNet(control=control)
 
@@ -268,11 +268,11 @@ class RPDCC(nn.Module):
 
 
 class RPDCCOLS(nn.Module):
-    def __init__(self, x, y, n_ahead=1, control=rpth_control(normalize=False)):
+    def __init__(self, x, y, n_ahead=1, control=rpth_control(normalize=True)):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchDCCNetNNL(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model)
+        self.cov_model = CovFactorOLS(x=x, y=y, factor_cov_model=factor_cov_model)
         # --- portfolio model:
         self.QP = RPTHNet(control=control)
 

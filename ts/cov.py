@@ -6,16 +6,24 @@ from ts.loss import loss_garch, loss_garch_dcc
 
 
 class CovFactor(nn.Module):
-    def __init__(self, x, y, factor_cov_model, dtype=torch.float64):
+    def __init__(self, x, y, factor_cov_model, dtype=torch.float64, init='random'):
         super().__init__()
         in_features = x.shape[1]
         out_features = y.shape[1]
         # --- init correlation parameters:
-        #weight = torch.rand(in_features, out_features, dtype=dtype)
-        #bias = torch_uniform(out_features, lower=-4, upper=-2, dtype=dtype)
-        weight = torch.linalg.lstsq(x, y)[0]
-        residuals = y - torch.matmul(x, weight)
-        bias = residuals.var(dim=0)
+        if init == 'random':
+            weight = torch.rand(in_features, out_features, dtype=dtype)
+            bias = torch.ones(out_features, dtype=dtype)
+        elif init == 'ols':
+            weight = torch.linalg.lstsq(x, y)[0]
+            residuals = y - torch.matmul(x, weight)
+            bias = residuals.var(dim=0)
+        elif init == 'mix':
+            weight = torch.linalg.lstsq(x, y)[0]
+            residuals = y - torch.matmul(x, weight)
+            bias = residuals.var(dim=0)
+            weight = 0.5 * weight + 0.5 * torch.rand(in_features, out_features, dtype=dtype)
+            bias = 0.5 * bias + 0.5 * torch.ones(out_features, dtype=dtype)
 
         # --- self:
         self.weight = torch.nn.Parameter(weight)
@@ -28,7 +36,7 @@ class CovFactor(nn.Module):
         # --- quadratic form:
         cov_mat = torch_quad_form_mat(self.weight, factor_cov_mat)
         # --- diagonal bias:
-        bias = torch.sigmoid(self.bias)
+        bias = torch.relu(self.bias)
         bias = torch.diag(bias)
         cov_mat = cov_mat + bias.unsqueeze(0)
 
@@ -70,11 +78,11 @@ class GarchNet(nn.Module):
         self.n_ahead = n_ahead
 
         # --- nn_parameters
-        alpha = torch_uniform(alpha_order, self.in_features, lower=-4, upper=-1, dtype=dtype)
+        alpha = torch_uniform(alpha_order, self.in_features, lower=-4, upper=-2, dtype=dtype)
         alpha = torch.nn.Parameter(alpha)
-        beta = torch_uniform(beta_order, self.in_features, lower=0, upper=4, dtype=dtype)
+        beta = torch_uniform(beta_order, self.in_features, lower=1, upper=3, dtype=dtype)
         beta = torch.nn.Parameter(beta)
-        omega = torch_uniform(self.in_features, lower=-4, upper=-2, dtype=dtype)
+        omega = torch_uniform(self.in_features, lower=-3, upper=-1, dtype=dtype)
         omega = torch.nn.Parameter(omega)
 
         # --- self:
@@ -103,11 +111,11 @@ class GarchNetNNL(nn.Module):
         self.buffer = buffer
         self.n_ahead = n_ahead
         # --- nn_parameters
-        alpha = torch_uniform(alpha_order, self.in_features, lower=-4, upper=-1, dtype=dtype)
+        alpha = torch_uniform(alpha_order, self.in_features, lower=-4, upper=-2, dtype=dtype)
         alpha = torch.nn.Parameter(alpha)
-        beta = torch_uniform(beta_order, self.in_features, lower=0, upper=4, dtype=dtype)
+        beta = torch_uniform(beta_order, self.in_features, lower=1, upper=3, dtype=dtype)
         beta = torch.nn.Parameter(beta)
-        omega = torch_uniform(self.in_features, lower=-4, upper=-2, dtype=dtype)
+        omega = torch_uniform(self.in_features, lower=-3, upper=-1, dtype=dtype)
         omega = torch.nn.Parameter(omega)
 
         # --- train by negative log-likelihood:
@@ -182,8 +190,8 @@ class GarchDCCNet(nn.Module):
         self.cor_mat = torch_cor(x, center=True)
 
         # --- self dcc params:
-        self.a = torch.nn.Parameter(torch_uniform(1, lower=-4, upper=-1, dtype=dtype))
-        self.b = torch.nn.Parameter(torch_uniform(1, lower=0, upper=4, dtype=dtype))
+        self.a = torch.nn.Parameter(torch_uniform(1, lower=-4, upper=-2, dtype=dtype))
+        self.b = torch.nn.Parameter(torch_uniform(1, lower=2, upper=4, dtype=dtype))
 
     def forward(self, x):
         # --- compute sigmas:
@@ -209,9 +217,9 @@ class GarchDCCNetNNL(nn.Module):
                                        n_ahead=n_ahead,  lr=lr, n_epochs=n_epochs, verbose=verbose)
         self.cor_mat = torch_cor(x, center=True)
         # --- init correlation parameters:
-        a = torch_uniform(1, lower=-4, upper=-1, dtype=dtype)
+        a = torch_uniform(1, lower=-4, upper=-2, dtype=dtype)
         a = torch.nn.Parameter(a)
-        b = torch_uniform(1, lower=0, upper=4, dtype=dtype)
+        b = torch_uniform(1, lower=2, upper=4, dtype=dtype)
         b = torch.nn.Parameter(b)
 
         # --- note: garch_model should be pre-trained by NNL
