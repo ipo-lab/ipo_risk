@@ -1,14 +1,13 @@
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 import torch
 from ts.loss import loss_erc
-from experiments.utils import load_response, load_features, get_train_dates, plot_z_rp, get_trade_weights, compute_returns
+from experiments.utils import load_response, load_features, get_train_dates, plot_z_rp, get_trade_weights, compute_returns, optimize_model
 from ts.popt import RPCCC, RPCCCOLS, RPDCC, RPDCCOLS
 
 
 # --- load datasets:
-x_df = load_features('ff3')
+feature = 'ff3'
+x_df = load_features(feature)
 y_df = load_response('ind10')
 train_dates, oos_dates = get_train_dates()
 
@@ -19,10 +18,11 @@ weights_ccc_ols = y_df * 0
 weights_dcc_ols = y_df * 0
 
 # --- params
-lr = 0.10
-n_epochs = 100
+lr = 0.25
+n_epochs = 500
 annual_factor = 52**0.5
-n_ahead = 4
+n_ahead = 1
+n_starts = 1
 
 torch.manual_seed(0)
 # --- main loop
@@ -44,36 +44,11 @@ for i in range(len(oos_dates)):
     model_dcc_ols = RPDCCOLS(x=x_is, y=y_is, n_ahead=n_ahead)
 
     # --- Train IPO Models: CCC
-    model_ccc = RPCCC(x=x_is, y=y_is, n_ahead=n_ahead)
-    optimizer = torch.optim.Adam(model_ccc.parameters(), lr=lr)
-    # ---- main training loop
-    loss_hist = []
-    for epoch in range(n_epochs):
-        z = model_ccc(x=x_is)
-        loss = loss_erc(z.squeeze(2), y_is)
-        loss_hist.append(loss.item())
-        optimizer.zero_grad()
-        # --- compute gradients
-        loss.backward()
-        # --- update parameters
-        optimizer.step()
-        print('epoch {}, loss {}'.format(epoch, loss.item()))
-    #
-    # --- Train IPO Models: CCC
-    model_dcc = RPDCC(x=x_is, y=y_is, n_ahead=n_ahead)
-    optimizer = torch.optim.Adam(model_dcc.parameters(), lr=lr)
-    # ---- main training loop
-    loss_hist = []
-    for epoch in range(n_epochs):
-        z = model_dcc(x=x_is)
-        loss = loss_erc(z.squeeze(2), y_is)
-        loss_hist.append(loss.item())
-        optimizer.zero_grad()
-        # --- compute gradients
-        loss.backward()
-        # --- update parameters
-        optimizer.step()
-        print('epoch {}, loss {}'.format(epoch, loss.item()))
+    model_ccc = optimize_model(x=x_is, y=y_is, model_init=RPCCC, loss_fn=loss_erc,
+                               lr=lr, n_epochs=n_epochs, n_starts=n_starts, n_ahead=n_ahead, init='random')
+    # --- Train IPO Models: CDCC
+    model_dcc = optimize_model(x=x_is, y=y_is, model_init=RPDCC, loss_fn=loss_erc,
+                               lr=lr, n_epochs=n_epochs, n_starts=n_starts, n_ahead=n_ahead, init='random')
 
     # --- out-of-sample:
     weights_ccc_ols[idx_oos] = model_ccc_ols(x=x_oos).squeeze(2).detach().numpy()[idx_oos]
@@ -101,19 +76,27 @@ w_dcc_ipo = get_trade_weights(w=weights_dcc, oos_start=oos_start, n_ahead=n_ahea
 r_dcc_ipo = compute_returns(w=w_dcc_ipo, y_df=y_df, oos_start=oos_start)
 
 # --- main plots:
+out_dir = 'images/'
 # --- CCC:
-plot_z_rp(r_ols=r_ccc_ols.values, r_ipo=r_ccc_ipo.values, w_ols=w_ccc_ols.values, w_ipo=w_ccc_ipo.values)
+plot_z_rp(r_ols=r_ccc_ols.values,r_ipo=r_ccc_ipo.values, w_ols=w_ccc_ols.values,w_ipo=w_ccc_ipo.values)
+
 # --- DCC:
 plot_z_rp(r_ols=r_dcc_ols.values, r_ipo=r_dcc_ipo.values, w_ols=w_dcc_ols.values, w_ipo=w_dcc_ipo.values)
+
 
 # --- Equity Plot:
 # --- CCC:
 r_ccc_ols_norm = r_ccc_ols/w_ccc_ols.values.sum(axis=1, keepdims=True)
 r_ccc_ipo_norm = r_ccc_ipo/w_ccc_ipo.values.sum(axis=1, keepdims=True)
-plt.plot(r_ccc_ols_norm.cumsum(), color='lightseagreen')
-plt.plot(r_ccc_ipo_norm.cumsum(), color='darkorange')
+plt.plot(r_ccc_ols_norm.cumsum()/100, color='lightseagreen')
+plt.plot(r_ccc_ipo_norm.cumsum()/100, color='darkorange')
+plt.legend(["OLS", "IPO"])
+
+
 # --- DCC:
 r_dcc_ols_norm = r_dcc_ols/w_dcc_ols.values.sum(axis=1, keepdims=True)
 r_dcc_ipo_norm = r_dcc_ipo/w_dcc_ipo.values.sum(axis=1, keepdims=True)
-plt.plot(r_dcc_ols_norm.cumsum(), color='lightseagreen')
-plt.plot(r_dcc_ipo_norm.cumsum(), color='darkorange')
+plt.plot(r_dcc_ols_norm.cumsum()/100, color='lightseagreen')
+plt.plot(r_dcc_ipo_norm.cumsum()/100, color='darkorange')
+plt.legend(["OLS", "IPO"])
+
