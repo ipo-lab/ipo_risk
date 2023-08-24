@@ -44,13 +44,20 @@ def loss_minvar_cov(z, cov_mat):
     return loss.mean()
 
 
-def loss_erc_cov(z, cov_mat):
+def loss_erc_cov_herf(z, cov_mat):
     denom = torch_portfolio_variance(z=z, cov_mat=cov_mat)
     z = z.unsqueeze(2)
     num = z * torch.matmul(cov_mat, z)
     loss = num.squeeze(2) / denom.unsqueeze(1)
     loss = loss ** 2
     loss = loss.sum(dim=1)
+    return loss.mean()
+
+
+def loss_erc_cov(z, cov_mat):
+    var = loss_minvar_cov(z, cov_mat)
+    log_loss = torch.log(z).sum(axis=1).mean()
+    loss = 0.50 * var - log_loss
     return loss.mean()
 
 

@@ -8,7 +8,7 @@ from rpth.control import rpth_control
 
 
 class MinVarCCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, init='random', control=box_qp_control()):
+    def __init__(self, x, y, y0=None, n_ahead=1, init='random', control=box_qp_control()):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchCCCNet(x=x, n_ahead=n_ahead)
@@ -56,7 +56,7 @@ class MinVarCCCOLS(nn.Module):
 
 
 class MinVarDCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, init='random', control=box_qp_control()):
+    def __init__(self, x, y, y0=None, n_ahead=1, init='random', control=box_qp_control()):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchDCCNet(x=x, n_ahead=n_ahead)
@@ -104,7 +104,7 @@ class MinVarDCCOLS(nn.Module):
 
 
 class MaxDivCCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, init='random', control=box_qp_control()):
+    def __init__(self, x, y, y0=None, n_ahead=1, init='random', control=box_qp_control()):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchCCCNet(x=x, n_ahead=n_ahead)
@@ -117,10 +117,10 @@ class MaxDivCCC(nn.Module):
         dtype = x.dtype
         Q = self.cov_model(x=x)
         n_z = Q.shape[1]
+        p = torch.zeros((n_obs, n_z, 1), dtype=dtype)
         with torch.no_grad():
-            p = torch.sqrt(torch.diagonal(Q, dim1=1, dim2=2)).unsqueeze(2)
-        A = torch.ones((n_obs, 1, n_z), dtype=dtype)
-        b = torch.ones((n_obs, 1, 1), dtype=dtype)
+            A = torch.sqrt(torch.diagonal(Q, dim1=1, dim2=2)).unsqueeze(1)
+            b = torch.ones((n_obs, 1, 1), dtype=dtype)
         lb = torch.zeros((n_obs, n_z, 1), dtype=dtype)
         ub = 1e8 * torch.ones((n_obs, n_z, 1), dtype=dtype)
 
@@ -143,10 +143,10 @@ class MaxDivCCCOLS(nn.Module):
         dtype = x.dtype
         Q = self.cov_model(x=x)
         n_z = Q.shape[1]
+        p = torch.zeros((n_obs, n_z, 1), dtype=dtype)
         with torch.no_grad():
-            p = torch.sqrt(torch.diagonal(Q, dim1=1, dim2=2)).unsqueeze(2)
-        A = torch.ones((n_obs, 1, n_z), dtype=dtype)
-        b = torch.ones((n_obs, 1, 1), dtype=dtype)
+            A = torch.sqrt(torch.diagonal(Q, dim1=1, dim2=2)).unsqueeze(1)
+            b = torch.ones((n_obs, 1, 1), dtype=dtype)
         lb = torch.zeros((n_obs, n_z, 1), dtype=dtype)
         ub = 1e8 * torch.ones((n_obs, n_z, 1), dtype=dtype)
 
@@ -156,7 +156,7 @@ class MaxDivCCCOLS(nn.Module):
 
 
 class MaxDivDCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, init='random', control=box_qp_control()):
+    def __init__(self, x, y, y0=None, n_ahead=1, init='random', control=box_qp_control()):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchDCCNet(x=x, n_ahead=n_ahead)
@@ -169,10 +169,10 @@ class MaxDivDCC(nn.Module):
         dtype = x.dtype
         Q = self.cov_model(x=x)
         n_z = Q.shape[1]
+        p = torch.zeros((n_obs, n_z, 1), dtype=dtype)
         with torch.no_grad():
-            p = torch.sqrt(torch.diagonal(Q, dim1=1, dim2=2)).unsqueeze(2)
-        A = torch.ones((n_obs, 1, n_z), dtype=dtype)
-        b = torch.ones((n_obs, 1, 1), dtype=dtype)
+            A = torch.sqrt(torch.diagonal(Q, dim1=1, dim2=2)).unsqueeze(1)
+            b = torch.ones((n_obs, 1, 1), dtype=dtype)
         lb = torch.zeros((n_obs, n_z, 1), dtype=dtype)
         ub = 1e8 * torch.ones((n_obs, n_z, 1), dtype=dtype)
 
@@ -195,10 +195,10 @@ class MaxDivDCCOLS(nn.Module):
         dtype = x.dtype
         Q = self.cov_model(x=x)
         n_z = Q.shape[1]
+        p = torch.zeros((n_obs, n_z, 1), dtype=dtype)
         with torch.no_grad():
-            p = torch.sqrt(torch.diagonal(Q, dim1=1, dim2=2)).unsqueeze(2)
-        A = torch.ones((n_obs, 1, n_z), dtype=dtype)
-        b = torch.ones((n_obs, 1, 1), dtype=dtype)
+            A = torch.sqrt(torch.diagonal(Q, dim1=1, dim2=2)).unsqueeze(1)
+            b = torch.ones((n_obs, 1, 1), dtype=dtype)
         lb = torch.zeros((n_obs, n_z, 1), dtype=dtype)
         ub = 1e8 * torch.ones((n_obs, n_z, 1), dtype=dtype)
 
@@ -208,11 +208,13 @@ class MaxDivDCCOLS(nn.Module):
 
 
 class RPCCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, init='random', control=rpth_control(normalize=True)):
+    def __init__(self, x, y, y0=None,  n_ahead=1, init='random', control=rpth_control(normalize=False)):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchCCCNet(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model, init=init)
+        if y0 is None:
+            y0 = y
+        self.cov_model = CovFactor(x=x, y=y0, factor_cov_model=factor_cov_model, init=init)
         # --- portfolio model:
         self.QP = RPTHNet(control=control)
 
@@ -228,7 +230,7 @@ class RPCCC(nn.Module):
 
 
 class RPCCCOLS(nn.Module):
-    def __init__(self, x, y, n_ahead=1, control=rpth_control(normalize=True)):
+    def __init__(self, x, y, n_ahead=1, control=rpth_control(normalize=False)):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchCCCNetNNL(x=x, n_ahead=n_ahead)
@@ -248,11 +250,13 @@ class RPCCCOLS(nn.Module):
 
 
 class RPDCC(nn.Module):
-    def __init__(self, x, y, n_ahead=1, init='random', control=rpth_control(normalize=True)):
+    def __init__(self, x, y, y0=None, n_ahead=1, init='random', control=rpth_control(normalize=False)):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchDCCNet(x=x, n_ahead=n_ahead)
-        self.cov_model = CovFactor(x=x, y=y, factor_cov_model=factor_cov_model, init=init)
+        if y0 is None:
+            y0 = y
+        self.cov_model = CovFactor(x=x, y=y0, factor_cov_model=factor_cov_model, init=init)
         # --- portfolio model:
         self.QP = RPTHNet(control=control)
 
@@ -268,7 +272,7 @@ class RPDCC(nn.Module):
 
 
 class RPDCCOLS(nn.Module):
-    def __init__(self, x, y, n_ahead=1, control=rpth_control(normalize=True)):
+    def __init__(self, x, y, n_ahead=1, control=rpth_control(normalize=False)):
         super().__init__()
         # --- init cov model:
         factor_cov_model = GarchDCCNetNNL(x=x, n_ahead=n_ahead)
