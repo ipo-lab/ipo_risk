@@ -6,7 +6,7 @@ For more details please see our paper:
 
 
 ## Core Dependencies:
-To run the experiments you will need to install the ADMM solver you will need to install:
+To run the experiments you will need to install:
 * [numpy](https://numpy.org)
 * [Pytorch](https://pytorch.org)
 * [lqp_py](https://github.com/ipo-lab/lqp_py): an efficient batch QP solver.
